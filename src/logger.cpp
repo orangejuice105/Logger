@@ -40,13 +40,19 @@ std::string getCurrentTime() //获取当前时间
     time_t now = std::time(nullptr); //获取当前时间，单位为s
 
     //运用c++标准库中的std::tm结构体,tm_year等为结构体内成员变量
-    std::tm* local = std::localtime(&now); //转换位本地时间结构体,将now指向的时间戳转换为本地时区的tm结构，并返回指向静态tm对象的指针
-    int year = local->tm_year + 1900; //年从1900开始算
-    int mon = local->tm_mon + 1; //月的范围是0-11
-    int day = local->tm_mday; //日期范围1-31
-    int hour = local->tm_hour; //小时范围0-23
-    int min = local->tm_min; //分钟范围0-59
-    int sec = local->tm_sec; //秒的范围0-60 (60用于闰秒)
+    std::tm local_tm; //自己准备一个 tm 对象（分配在栈上，安全）
+    
+    // 调用 localtime_r，传入时间戳地址和tm对象地址
+    // 函数会把计算结果直接写进 local_tm 里
+    localtime_r(&now, &local_tm);
+
+    // 访问方式要改成 . 因为local_tm是对象不是指针
+    int year = local_tm.tm_year + 1900; //年从1900开始算
+    int mon = local_tm.tm_mon + 1; //月的范围是0-11
+    int day = local_tm.tm_mday; //日期范围1-31
+    int hour = local_tm.tm_hour; //小时范围0-23
+    int min = local_tm.tm_min; //分钟范围0-59
+    int sec = local_tm.tm_sec; //秒的范围0-60 (60用于闰秒)
 
     std::stringstream realtime; //stringstream用来拼接和格式化数据,是流对象
      
