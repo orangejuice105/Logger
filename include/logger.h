@@ -1,6 +1,10 @@
 #pragma once
 #include <mutex>
 #include<string>
+#include <thread>
+#include <queue>
+#include <condition_variable>
+#include <atomic>
 
 enum class LogLevel //表示日志等级
 {
@@ -8,6 +12,14 @@ enum class LogLevel //表示日志等级
     INFO,
     WARN,
     ERROR
+};
+
+struct LogMessage
+{
+    LogLevel level;
+    std::string time;
+    std::string message;
+    std::thread::id threadId;
 };
 
 class Logger{
@@ -22,8 +34,22 @@ public:
 private:
     Logger(); //私有构造函数，禁止在类外直接创建Logger对象，外部只能通过getInstance获取唯一实例
 
+    ~Logger(); 
+
+    void processLogs();
+
+    void outputLogs(const LogMessage& msg); //加&不拷贝，性能好
+
     Logger(const Logger&) = delete; //禁止拷贝构造 
     Logger& operator=(const Logger&) = delete; //禁止赋值
 
-    std::mutex logmtx; //防止外部误用
+    std::mutex logmtx; //保护日志队列，保证多线程访问安全
+
+    std::queue<LogMessage> logQueue; //日志队列，不允许外部调用
+
+    std::condition_variable cv; //有线程时告知后台
+
+    std::thread logThread; //日志处理线程
+
+    std::atomic<bool> stop;; //通知日志线程是否可以结束工作,并且保证原子性
 };

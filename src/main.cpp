@@ -1,19 +1,36 @@
 #include "logger.h"
-#include <iostream>
 #include <thread>
 
-int main(){
-    for(int i = 0;i < 100;i++){
-        std::thread t1([] {
-            Logger::getInstance().log(LogLevel::INFO, "我是线程 1 的日志");
-        });
-        std::thread t2([] {
-            Logger::getInstance().log(LogLevel::ERROR, "我是线程 2 的日志");
-        });
 
-        t1.join();
-        t2.join();
-    }
-    
+int main()
+{
+    std::thread t1([]{
+        for(int i=0;i<10;i++)
+        {
+            Logger::getInstance()
+            .log(
+                LogLevel::INFO,
+                "thread1"
+            );
+        }
+    });
+
+
+    std::thread t2([]{
+        for(int i=0;i<10;i++)
+        {
+            Logger::getInstance()
+            .log(
+                LogLevel::ERROR,
+                "thread2"
+            );
+        }
+    });
+
+
+    t1.join();
+    t2.join();
+
+
     return 0;
 }

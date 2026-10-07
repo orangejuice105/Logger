@@ -7,8 +7,11 @@
 #include <thread>
 #include <mutex>
 
-Logger::Logger(){
 
+Logger::Logger(): stop(false){
+    //构造函数执行时，this指向正在被构造的Logger对象,即(instance)
+    //第一次调用Logger::getInstance()时执行，只执行一次
+    logThread = std::thread(&Logger::processLogs, this); //在线程中执行this->processsLogs
 }
 
 //实现getInstance
@@ -69,18 +72,61 @@ std::string getCurrentTime() //获取当前时间
 }
 
 void Logger::log(LogLevel level,const std::string& message){
-    //lock_guard负责加锁和自动解锁，性能比unique_lock更好
-    std::lock_guard<std::mutex> lock(logmtx); //log为Logger类成员函数，可以访问类内所有成员
+    LogMessage logMsg; //声明一个LogMessage对象
+
+    logMsg.level = level;
+    logMsg.message = message;
+    logMsg.threadId = std::this_thread::get_id();
+    logMsg.time = getCurrentTime();
+
+    {   
+        std::lock_guard<std::mutex> lock(logmtx);
+        logQueue.push(std::move(logMsg));
+    }
+    cv.notify_one();
+}
+
+void Logger::outputLogs(const LogMessage& msg)
+{
     std::cout
-        << "["
-        << getCurrentTime()
-        << "] "
-        << "["
-        << levelToString(level)
-        << "] "
-        << "[thread:"
-        << std::this_thread::get_id()
-        << "] "
-        << message
+        << "[" << msg.time << "] "
+        << "[" << levelToString(msg.level) << "] "
+        << "[thread:" << msg.threadId << "] "
+        << msg.message
         << std::endl;
+}
+
+void Logger::processLogs(){
+    while(true){
+        LogMessage logMsg;
+
+        {
+            std::unique_lock<std::mutex> lock(logmtx);
+            cv.wait(lock,[this]{
+                //通过程序是否退出和队列是否为空判断线程是否继续睡眠
+                return stop || !logQueue.empty();
+            });
+
+            //程序退出并且日志处理完了结束
+            if(stop && logQueue.empty())
+            {
+                break;
+            }
+
+            logMsg = std::move(logQueue.front()); //move直接移动不拷贝
+            logQueue.pop();
+
+        } //控制锁的区域避免等待outputLogs
+
+        outputLogs(logMsg);
+    }
+}
+
+Logger::~Logger(){
+    stop = true;
+
+    cv.notify_all();
+
+    if(logThread.joinable()) //判断线程是否真实存在，存在则等待其执行结束
+        logThread.join();
 }
