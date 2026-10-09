@@ -6,9 +6,16 @@
 #include <sstream>
 #include <thread>
 #include <mutex>
-
+#include <stdexcept>
 
 Logger::Logger(): stop(false){
+    //std::ios::out :以输出方式打开文件; std::ios::app :追加模式，每次写入都追加到文件末尾
+    logFile.open("server.log", std::ios::out | std::ios::app); //打开(不存在则创建)server.log文件
+
+    if(!logFile.is_open()){ //如果打开失败抛出异常
+        throw std::runtime_error("Failed to open server.log");
+    }
+
     //构造函数执行时，this指向正在被构造的Logger对象,即(instance)
     //第一次调用Logger::getInstance()时执行，只执行一次
     logThread = std::thread(&Logger::processLogs, this); //在线程中执行this->processsLogs
@@ -88,7 +95,7 @@ void Logger::log(LogLevel level,const std::string& message){
 
 void Logger::outputLogs(const LogMessage& msg)
 {
-    std::cout
+    logFile
         << "[" << msg.time << "] "
         << "[" << levelToString(msg.level) << "] "
         << "[thread:" << msg.threadId << "] "
@@ -129,4 +136,6 @@ Logger::~Logger(){
 
     if(logThread.joinable()) //判断线程是否真实存在，存在则等待其执行结束
         logThread.join();
+
+    logFile.close(); //关闭文件
 }
