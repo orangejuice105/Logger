@@ -52,7 +52,7 @@ private:
 
     std::thread logThread; //日志处理线程
 
-    std::atomic<bool> stop;; //通知日志线程是否可以结束工作,并且保证原子性
+    std::atomic<bool> stop; //通知日志线程是否可以结束工作,并且保证原子性
 
     std::ofstream logFile; //声明一个文件输出流对象
 };

@@ -95,17 +95,22 @@ void Logger::log(LogLevel level,const std::string& message){
 
 void Logger::outputLogs(const LogMessage& msg)
 {
-    logFile
+    logFile  //logFile会自动记录操作的成功或失败，但不会报告错误
         << "[" << msg.time << "] "
         << "[" << levelToString(msg.level) << "] "
         << "[thread:" << msg.threadId << "] "
         << msg.message
-        << std::endl;
+        << '\n'; //"\n"只换行不刷新，提高效率
+
+    if(!logFile){
+        std::cerr << "日志文件写入失败： " //std::cerr : 标准错误输出流
+                  << msg.message << "\n";
+    }
 }
 
 void Logger::processLogs(){
     while(true){
-        LogMessage logMsg;
+        std::queue<LogMessage> batch; //局部队列，存放一批要处理的日志
 
         {
             std::unique_lock<std::mutex> lock(logmtx);
@@ -120,17 +125,32 @@ void Logger::processLogs(){
                 break;
             }
 
-            logMsg = std::move(logQueue.front()); //move直接移动不拷贝
-            logQueue.pop();
+            for(int i = 0;i < 100 && !logQueue.empty();i++){
+                batch.push(std::move(logQueue.front())); //move直接移动不拷贝
+                logQueue.pop();
+            }
+            
 
         } //控制锁的区域避免等待outputLogs
 
-        outputLogs(logMsg);
+        while(!batch.empty()){
+            outputLogs(batch.front());
+            batch.pop();
+        }
+
+        logFile.flush(); //处理完一批之后刷新一次缓冲区
+        if(!logFile){
+            std::cerr << "日志文件流发生错误，本批日志可能未完整写入\n";
+        }
     }
 }
 
 Logger::~Logger(){
-    stop = true;
+    {
+        std::lock_guard<std::mutex> lock(logmtx);
+        stop = true;
+    }
+    
 
     cv.notify_all();
 
@@ -138,4 +158,8 @@ Logger::~Logger(){
         logThread.join();
 
     logFile.close(); //关闭文件
+
+    if (!logFile) {
+        std::cerr << "日志文件关闭后处于失败状态\n";
+    }
 }
