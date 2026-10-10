@@ -7,18 +7,57 @@
 #include <thread>
 #include <mutex>
 #include <stdexcept>
+#include <exception>
 
+// 由 getInstance() 中的静态对象在首次创建时调用
+// 这里只初始化成员状态，打开文件和启动后台线程由 init() 完成
 Logger::Logger(): stop(false){
-    //std::ios::out :以输出方式打开文件; std::ios::app :追加模式，每次写入都追加到文件末尾
-    logFile.open("server.log", std::ios::out | std::ios::app); //打开(不存在则创建)server.log文件
 
-    if(!logFile.is_open()){ //如果打开失败抛出异常
-        throw std::runtime_error("Failed to open server.log");
+}
+
+bool Logger::init(const LoggerConfig& config){
+    if(initialized_){
+        std::cerr << "重复调用init(),本次初始化请求被拒绝" << std::endl;
+        return false;
     }
 
-    //构造函数执行时，this指向正在被构造的Logger对象,即(instance)
-    //第一次调用Logger::getInstance()时执行，只执行一次
-    logThread = std::thread(&Logger::processLogs, this); //在线程中执行this->processsLogs
+    if(config.filePath.empty()){
+        std::cerr << "路径为空" << std::endl;
+        return false;
+    }
+
+    if(config.batchSize == 0){
+        std::cerr << "批次为零" << std::endl;
+        return false;
+    }
+
+    config_ = config;
+
+    logFile.clear(); //清除上一次操作留下的错误标志
+
+    //std::ios::out :以输出方式打开文件; std::ios::app :追加模式，每次写入都追加到文件末尾
+    logFile.open(config_.filePath, std::ios::out | std::ios::app); //按配置路径打开文件，使用追加模式
+
+    if(!logFile.is_open()){ //打开失败时报告错误并返回false
+        std::cerr << "无法打开日志文件: " << config.filePath << '\n';
+        return false;
+    }
+
+    //try: 尝试执行其中操作，如果操作抛出异常，当前执行流程被打断，转去寻找匹配的catch
+    try { 
+        // this指向当前调用init()的Logger对象
+        logThread = std::thread(&Logger::processLogs, this); //在线程中执行this->processsLogs
+    }
+    //catch: 接收异常对象并处理
+    catch(const std::exception& e) { //std::exception: 标准异常的共同基类，接收线程创建抛出的标准异常
+        std::cerr << "启动日志线程失败" << std::endl;
+        std::cerr << e.what() << std::endl; //e.what(): 取得异常的描述文字，可以输出到终端
+        logFile.close();
+        return false;
+    }
+
+    initialized_ = true;
+    return true;
 }
 
 //实现getInstance
@@ -79,6 +118,15 @@ std::string getCurrentTime() //获取当前时间
 }
 
 void Logger::log(LogLevel level,const std::string& message){
+    if (!initialized_) {
+        std::cerr << "Logger 尚未初始化，无法记录日志\n";
+        return;
+    }
+
+    //如果级别低于最小输出级别直接返回
+    if(level < config_.minLevel){ 
+        return;
+    }
     LogMessage logMsg; //声明一个LogMessage对象
 
     logMsg.level = level;
@@ -125,8 +173,8 @@ void Logger::processLogs(){
                 break;
             }
 
-            for(int i = 0;i < 100 && !logQueue.empty();i++){
-                batch.push(std::move(logQueue.front())); //move直接移动不拷贝
+            for(std::size_t i = 0;i < config_.batchSize && !logQueue.empty();i++){
+                batch.push(std::move(logQueue.front())); //将队首日志移动到本地批次，减少字符串复制
                 logQueue.pop();
             }
             
@@ -154,12 +202,14 @@ Logger::~Logger(){
 
     cv.notify_all();
 
-    if(logThread.joinable()) //判断线程是否真实存在，存在则等待其执行结束
+    if(logThread.joinable()) //关联了尚未 join 或 detach 的线程时，等待并回收线程
         logThread.join();
 
-    logFile.close(); //关闭文件
+    if(logFile.is_open()){
+        logFile.close(); //关闭文件
 
-    if (!logFile) {
-        std::cerr << "日志文件关闭后处于失败状态\n";
-    }
+        if (!logFile) {
+            std::cerr << "日志文件关闭后处于失败状态\n";
+        }
+    }  
 }
