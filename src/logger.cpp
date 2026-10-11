@@ -8,6 +8,8 @@
 #include <mutex>
 #include <stdexcept>
 #include <exception>
+#include <filesystem>
+#include <system_error>
 
 // 由 getInstance() 中的静态对象在首次创建时调用
 // 这里只初始化成员状态，打开文件和启动后台线程由 init() 完成
@@ -31,6 +33,21 @@ bool Logger::init(const LoggerConfig& config){
         return false;
     }
 
+    if(config.queueCapacity == 0){
+        std::cerr << "队列容量为零" << std::endl;
+        return false;
+    }
+
+    if(config.maxFileSize == 0){
+        std::cerr << "日志滚动阈值为零" << std::endl;
+        return false;
+    }
+
+    if(config.maxBackupFiles == 0){
+        std::cerr << "最多保留的归档日志文件数量为零" << std::endl;
+        return false;
+    }
+
     config_ = config;
 
     logFile.clear(); //清除上一次操作留下的错误标志
@@ -42,6 +59,21 @@ bool Logger::init(const LoggerConfig& config){
         std::cerr << "无法打开日志文件: " << config.filePath << '\n';
         return false;
     }
+
+    //查询日志文件大小
+    std::error_code ec; //ec: 接收错误信息
+    std::uintmax_t size = 
+        std::filesystem::file_size(config_.filePath,ec);
+    
+    if(ec){
+        std::cerr << "查询日志文件大小失败："
+          << config_.filePath << ","
+          << ec.message() << '\n'; //ec.message(): ec保存的错误描述
+        logFile.close();
+        return false;
+    }
+
+    curFileSize_ = size;
 
     //try: 尝试执行其中操作，如果操作抛出异常，当前执行流程被打断，转去寻找匹配的catch
     try { 
@@ -117,7 +149,8 @@ std::string getCurrentTime() //获取当前时间
     return realtime.str();
 }
 
-void Logger::log(LogLevel level,const std::string& message){
+                                                          //文件名参数使用 const char* 接收，传参时不复制文件名字符
+void Logger::log(LogLevel level,const std::string& message,const char* file,int line){
     if (!initialized_) {
         std::cerr << "Logger 尚未初始化，无法记录日志\n";
         return;
@@ -133,27 +166,57 @@ void Logger::log(LogLevel level,const std::string& message){
     logMsg.message = message;
     logMsg.threadId = std::this_thread::get_id();
     logMsg.time = getCurrentTime();
+    logMsg.file = file;
+    logMsg.line = line;
 
     {   
         std::lock_guard<std::mutex> lock(logmtx);
+        //队列达到容量上限时，丢弃本次新日志
+        if(logQueue.size() >= config_.queueCapacity){
+            stats_.droppedCount++;
+            return;
+        }
         logQueue.push(std::move(logMsg));
+        if(logQueue.size() > stats_.queuePeak){
+            stats_.queuePeak = logQueue.size();
+        }
     }
     cv.notify_one();
 }
 
-void Logger::outputLogs(const LogMessage& msg)
-{
-    logFile  //logFile会自动记录操作的成功或失败，但不会报告错误
-        << "[" << msg.time << "] "
-        << "[" << levelToString(msg.level) << "] "
-        << "[thread:" << msg.threadId << "] "
-        << msg.message
-        << '\n'; //"\n"只换行不刷新，提高效率
+void Logger::outputLogs(const LogMessage& msg){
+    const std::string text = formatLog(msg);
+    
+    //先检查文件输出是否异常
+    if (fileOutputFailed_) {
+        std::cerr << text;
+        return;
+    }
+
+    //判断是否需要滚动
+    const bool needRotate = 
+    curFileSize_ > 0 &&
+    (
+        curFileSize_ >= config_.maxFileSize ||
+        text.size() > config_.maxFileSize - curFileSize_
+    );
+
+    if(needRotate && !rotateFiles()){
+        fileOutputFailed_ = true;
+        std::cerr << text;
+        return;
+    }
+
+    logFile << text; //将text内容写入logFile
 
     if(!logFile){
-        std::cerr << "日志文件写入失败： " //std::cerr : 标准错误输出流
-                  << msg.message << "\n";
+        fileOutputFailed_ = true;
+        std::cerr << "日志文件写入失败，后续日志改用标准错误流\n";
+        std::cerr << text;
+        return;
     }
+
+    curFileSize_ += text.size();
 }
 
 void Logger::processLogs(){
@@ -186,11 +249,120 @@ void Logger::processLogs(){
             batch.pop();
         }
 
-        logFile.flush(); //处理完一批之后刷新一次缓冲区
-        if(!logFile){
-            std::cerr << "日志文件流发生错误，本批日志可能未完整写入\n";
+        //只在文件输出正常时刷新
+        if(!fileOutputFailed_){
+          logFile.flush(); //处理完一批之后刷新一次缓冲区
+            if(!logFile){
+                std::cerr << "日志文件流发生错误，本批日志可能未完整写入\n";
+                fileOutputFailed_ = true;
+            }  
+        }
+        
+    }
+}
+
+LoggerStats Logger::getStats(){
+    std::lock_guard<std::mutex> lock(logmtx);
+    return stats_;
+}
+
+std::string Logger::formatLog(const LogMessage& msg){
+    std::ostringstream formatted;
+
+    //拼接完整日志字符串
+    formatted
+        << "[" << msg.time << "] "
+        << "[" << levelToString(msg.level) << "] "
+        << "[thread:" << msg.threadId << "] "
+        << "[" << msg.file << ":" << msg.line << "] "
+        << msg.message
+        << '\n';
+
+    return formatted.str();
+}
+
+bool Logger::rotateFiles(){ //进行滚动，流程：刷新、关闭、删除、移动、改名、重开文件、计数归零
+    logFile.flush();
+
+    if(!logFile){
+        std::cerr << "刷新失败" << std::endl;
+        return false;
+    }
+
+    logFile.close();
+
+    if(!logFile){
+        std::cerr << "关闭失败: " << config_.filePath << std::endl;
+        return false;
+    }
+
+    //滚动时要删除的最旧文件
+    const std::string oldest = config_.filePath + '.' + std::to_string(config_.maxBackupFiles);
+    
+    std::error_code ec;
+    std::filesystem::remove(oldest,ec);
+
+    if(ec){
+         std::cerr << "删除失败"
+          << ec.message() << '\n'; //ec.message(): ec保存的错误描述
+        return false;
+    }
+
+    for(std::size_t i = config_.maxBackupFiles;i > 1;i--){
+        const std::string source = config_.filePath + '.' + std::to_string(i - 1); //待改文件名
+        const std::string target = config_.filePath + '.' + std::to_string(i); //目标文件名
+
+        //检查来源是否存在
+        const bool sourceExists =
+            std::filesystem::exists(source, ec);
+
+        if(ec){
+            std::cerr << "查询失败" 
+             << ec.message() << '\n';
+            return false;
+        }
+
+        //存在则执行重命名
+        if(sourceExists){
+            std::filesystem::rename(source,target,ec);
+            if(ec){
+                std::cerr << "重命名失败" 
+                 << ec.message() << '\n';
+                 return false;
+            }
+        }
+        //不存在跳过这一轮
+        else {
+            continue;
         }
     }
+
+    //移动完后重命名当前文件
+    std::filesystem::rename(
+        config_.filePath,
+        config_.filePath + ".1",
+        ec
+    );
+
+    if(ec){
+        std::cerr << "重命名失败" 
+         << ec.message() << '\n';
+        return false;
+    }
+
+    //再重新打开原来的路径
+    logFile.clear();
+
+    logFile.open(config_.filePath,std::ios::out | std::ios::app);
+
+    if(!logFile){
+        std::cerr << "打开失败" << std::endl;
+        return false;
+    }
+
+    curFileSize_ = 0;
+
+    return true;
 }
 
 Logger::~Logger(){
