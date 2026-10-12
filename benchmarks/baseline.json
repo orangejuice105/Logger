@@ -1,0 +1,394 @@
+{
+  "measured_at": "2026-10-12T05:52:50.181690+00:00",
+  "environment": {
+    "system": "Linux-6.6.114.1-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "cpu": "AMD Ryzen 9 7940HX with Radeon Graphics",
+    "logical_cpus": 32,
+    "available_cpus": 32,
+    "memory_kib": 7720980,
+    "filesystem": "ext4",
+    "compiler": "g++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0",
+    "python": "3.10.12",
+    "build_flags": [
+      "-std=c++17",
+      "-O2",
+      "-DNDEBUG",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+      "-pthread"
+    ],
+    "source_sha256": {
+      "include/logger.h": "1c21b076656264d600ecd089c623313a617c2f34a0456516791d10ca4bcf2715",
+      "src/logger.cpp": "160ac987a333757fa087a7c9ddbb44bbbd6695f84ab08a97766e432bf491e797",
+      "benchmarks/benchmark_driver.cpp": "92f5ce87c719ff88faf2b7bfa3e5c28c0091c8e9787d7eca5adcbe3a686a7d13",
+      "benchmarks/run_benchmark.py": "7cfc25900acd13dec8c39a651dfe2137dfbad21c53fa27e69587990e1835f430"
+    }
+  },
+  "settings": {
+    "messages": 100000,
+    "message_bytes": 128,
+    "repeats": 3,
+    "level": "INFO",
+    "min_level": "INFO",
+    "rotation": "avoided by maximum size threshold",
+    "warmup_messages": 10000
+  },
+  "cases": [
+    {
+      "name": "single_batch1",
+      "threads": 1,
+      "batch_size": 1,
+      "queue_capacity": 100000,
+      "warmup": {
+        "submitted": 10000,
+        "dropped": 0,
+        "queue_peak": 8998,
+        "submit_ms": 19.273178,
+        "mean_call_us": 1.894074,
+        "written": 10000,
+        "file_bytes": 2480000,
+        "full_ms": 36.58018999999513,
+        "attempts_per_second": 518855.7901556245,
+        "written_per_second": 273372.00818260736,
+        "drop_percent": 0.0
+      },
+      "runs": [
+        {
+          "submitted": 100000,
+          "dropped": 0,
+          "queue_peak": 89638,
+          "submit_ms": 177.414951,
+          "mean_call_us": 1.753086,
+          "written": 100000,
+          "file_bytes": 24800000,
+          "full_ms": 332.70861400001195,
+          "attempts_per_second": 563650.3543604958,
+          "written_per_second": 300563.3031190362,
+          "drop_percent": 0.0
+        },
+        {
+          "submitted": 100000,
+          "dropped": 0,
+          "queue_peak": 89500,
+          "submit_ms": 153.27323,
+          "mean_call_us": 1.510995,
+          "written": 100000,
+          "file_bytes": 24800000,
+          "full_ms": 301.9589470000028,
+          "attempts_per_second": 652429.6512835281,
+          "written_per_second": 331170.8462143997,
+          "drop_percent": 0.0
+        },
+        {
+          "submitted": 100000,
+          "dropped": 0,
+          "queue_peak": 90276,
+          "submit_ms": 151.46188,
+          "mean_call_us": 1.493489,
+          "written": 100000,
+          "file_bytes": 24800000,
+          "full_ms": 299.87574199998335,
+          "attempts_per_second": 660232.1323358722,
+          "written_per_second": 333471.45498686435,
+          "drop_percent": 0.0
+        }
+      ],
+      "median": {
+        "submit_ms": 153.27323,
+        "mean_call_us": 1.510995,
+        "full_ms": 301.9589470000028,
+        "attempts_per_second": 652429.6512835281,
+        "written_per_second": 331170.8462143997,
+        "written": 100000,
+        "dropped": 0,
+        "queue_peak": 89638,
+        "drop_percent": 0.0
+      }
+    },
+    {
+      "name": "single_batch100",
+      "threads": 1,
+      "batch_size": 100,
+      "queue_capacity": 100000,
+      "warmup": {
+        "submitted": 10000,
+        "dropped": 0,
+        "queue_peak": 2133,
+        "submit_ms": 12.293952,
+        "mean_call_us": 1.194622,
+        "written": 10000,
+        "file_bytes": 2480000,
+        "full_ms": 15.616936000014903,
+        "attempts_per_second": 813408.0887903254,
+        "written_per_second": 640330.4719946638,
+        "drop_percent": 0.0
+      },
+      "runs": [
+        {
+          "submitted": 100000,
+          "dropped": 0,
+          "queue_peak": 3104,
+          "submit_ms": 85.825226,
+          "mean_call_us": 0.837002,
+          "written": 100000,
+          "file_bytes": 24800000,
+          "full_ms": 89.19470400002183,
+          "attempts_per_second": 1165158.598009401,
+          "written_per_second": 1121142.7978949908,
+          "drop_percent": 0.0
+        },
+        {
+          "submitted": 100000,
+          "dropped": 0,
+          "queue_peak": 2632,
+          "submit_ms": 87.913426,
+          "mean_call_us": 0.857318,
+          "written": 100000,
+          "file_bytes": 24800000,
+          "full_ms": 91.87359999998534,
+          "attempts_per_second": 1137482.6866603969,
+          "written_per_second": 1088451.9600844632,
+          "drop_percent": 0.0
+        },
+        {
+          "submitted": 100000,
+          "dropped": 0,
+          "queue_peak": 802,
+          "submit_ms": 87.218211,
+          "mean_call_us": 0.850209,
+          "written": 100000,
+          "file_bytes": 24800000,
+          "full_ms": 89.36079199997948,
+          "attempts_per_second": 1146549.5434204678,
+          "written_per_second": 1119059.0163975153,
+          "drop_percent": 0.0
+        }
+      ],
+      "median": {
+        "submit_ms": 87.218211,
+        "mean_call_us": 0.850209,
+        "full_ms": 89.36079199997948,
+        "attempts_per_second": 1146549.5434204678,
+        "written_per_second": 1119059.0163975153,
+        "written": 100000,
+        "dropped": 0,
+        "queue_peak": 2632,
+        "drop_percent": 0.0
+      }
+    },
+    {
+      "name": "four_batch1",
+      "threads": 4,
+      "batch_size": 1,
+      "queue_capacity": 100000,
+      "warmup": {
+        "submitted": 10000,
+        "dropped": 0,
+        "queue_peak": 7102,
+        "submit_ms": 16.147201,
+        "mean_call_us": 6.203071,
+        "written": 10000,
+        "file_bytes": 2480000,
+        "full_ms": 30.27990300000738,
+        "attempts_per_second": 619302.3794030928,
+        "written_per_second": 330252.0486937347,
+        "drop_percent": 0.0
+      },
+      "runs": [
+        {
+          "submitted": 100000,
+          "dropped": 0,
+          "queue_peak": 79232,
+          "submit_ms": 144.388837,
+          "mean_call_us": 5.682006,
+          "written": 100000,
+          "file_bytes": 24800000,
+          "full_ms": 276.65779800003065,
+          "attempts_per_second": 692574.3158385576,
+          "written_per_second": 361457.3698009008,
+          "drop_percent": 0.0
+        },
+        {
+          "submitted": 100000,
+          "dropped": 0,
+          "queue_peak": 78510,
+          "submit_ms": 142.961825,
+          "mean_call_us": 5.660972,
+          "written": 100000,
+          "file_bytes": 24800000,
+          "full_ms": 275.60481000000436,
+          "attempts_per_second": 699487.4330962128,
+          "written_per_second": 362838.36991088226,
+          "drop_percent": 0.0
+        },
+        {
+          "submitted": 100000,
+          "dropped": 0,
+          "queue_peak": 79167,
+          "submit_ms": 152.364877,
+          "mean_call_us": 5.992272,
+          "written": 100000,
+          "file_bytes": 24800000,
+          "full_ms": 282.3475559999906,
+          "attempts_per_second": 656319.2381929334,
+          "written_per_second": 354173.42163926264,
+          "drop_percent": 0.0
+        }
+      ],
+      "median": {
+        "submit_ms": 144.388837,
+        "mean_call_us": 5.682006,
+        "full_ms": 276.65779800003065,
+        "attempts_per_second": 692574.3158385576,
+        "written_per_second": 361457.3698009008,
+        "written": 100000,
+        "dropped": 0,
+        "queue_peak": 79167,
+        "drop_percent": 0.0
+      }
+    },
+    {
+      "name": "four_batch100",
+      "threads": 4,
+      "batch_size": 100,
+      "queue_capacity": 100000,
+      "warmup": {
+        "submitted": 10000,
+        "dropped": 0,
+        "queue_peak": 247,
+        "submit_ms": 15.126468,
+        "mean_call_us": 5.852148,
+        "written": 10000,
+        "file_bytes": 2480000,
+        "full_ms": 17.730332999974507,
+        "attempts_per_second": 661092.8605408745,
+        "written_per_second": 564005.1994519436,
+        "drop_percent": 0.0
+      },
+      "runs": [
+        {
+          "submitted": 100000,
+          "dropped": 0,
+          "queue_peak": 750,
+          "submit_ms": 114.945423,
+          "mean_call_us": 4.559229,
+          "written": 100000,
+          "file_bytes": 24800000,
+          "full_ms": 117.74143100001311,
+          "attempts_per_second": 869978.0938645987,
+          "written_per_second": 849318.7075328553,
+          "drop_percent": 0.0
+        },
+        {
+          "submitted": 100000,
+          "dropped": 0,
+          "queue_peak": 604,
+          "submit_ms": 114.383483,
+          "mean_call_us": 4.469261,
+          "written": 100000,
+          "file_bytes": 24800000,
+          "full_ms": 117.24242100001447,
+          "attempts_per_second": 874252.0980935683,
+          "written_per_second": 852933.5981554633,
+          "drop_percent": 0.0
+        },
+        {
+          "submitted": 100000,
+          "dropped": 0,
+          "queue_peak": 710,
+          "submit_ms": 107.464831,
+          "mean_call_us": 4.217146,
+          "written": 100000,
+          "file_bytes": 24800000,
+          "full_ms": 109.80702699998801,
+          "attempts_per_second": 930536.9865607474,
+          "written_per_second": 910688.5299791507,
+          "drop_percent": 0.0
+        }
+      ],
+      "median": {
+        "submit_ms": 114.383483,
+        "mean_call_us": 4.469261,
+        "full_ms": 117.24242100001447,
+        "attempts_per_second": 874252.0980935683,
+        "written_per_second": 852933.5981554633,
+        "written": 100000,
+        "dropped": 0,
+        "queue_peak": 710,
+        "drop_percent": 0.0
+      }
+    },
+    {
+      "name": "four_default_queue",
+      "threads": 4,
+      "batch_size": 100,
+      "queue_capacity": 10000,
+      "warmup": {
+        "submitted": 10000,
+        "dropped": 0,
+        "queue_peak": 450,
+        "submit_ms": 14.292405,
+        "mean_call_us": 5.270431,
+        "written": 10000,
+        "file_bytes": 2480000,
+        "full_ms": 17.044718000022385,
+        "attempts_per_second": 699672.308474326,
+        "written_per_second": 586692.0180191228,
+        "drop_percent": 0.0
+      },
+      "runs": [
+        {
+          "submitted": 100000,
+          "dropped": 0,
+          "queue_peak": 1356,
+          "submit_ms": 111.486008,
+          "mean_call_us": 4.392932,
+          "written": 100000,
+          "file_bytes": 24800000,
+          "full_ms": 113.78997499997467,
+          "attempts_per_second": 896973.5466714352,
+          "written_per_second": 878812.0394614926,
+          "drop_percent": 0.0
+        },
+        {
+          "submitted": 100000,
+          "dropped": 0,
+          "queue_peak": 609,
+          "submit_ms": 109.791762,
+          "mean_call_us": 4.34009,
+          "written": 100000,
+          "file_bytes": 24800000,
+          "full_ms": 112.14660699999968,
+          "attempts_per_second": 910815.148407947,
+          "written_per_second": 891689.9287019918,
+          "drop_percent": 0.0
+        },
+        {
+          "submitted": 100000,
+          "dropped": 0,
+          "queue_peak": 847,
+          "submit_ms": 110.606204,
+          "mean_call_us": 4.314835,
+          "written": 100000,
+          "file_bytes": 24800000,
+          "full_ms": 113.19345700002259,
+          "attempts_per_second": 904108.4169202661,
+          "written_per_second": 883443.2894825365,
+          "drop_percent": 0.0
+        }
+      ],
+      "median": {
+        "submit_ms": 110.606204,
+        "mean_call_us": 4.34009,
+        "full_ms": 113.19345700002259,
+        "attempts_per_second": 904108.4169202661,
+        "written_per_second": 883443.2894825365,
+        "written": 100000,
+        "dropped": 0,
+        "queue_peak": 847,
+        "drop_percent": 0.0
+      }
+    }
+  ]
+}
