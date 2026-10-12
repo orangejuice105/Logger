@@ -182,6 +182,3 @@ src/main.cpp                 使用示例
 tests/                       功能测试入口和自动验证脚本
 benchmarks/                  性能测量入口、脚本和初始结果
 ```
-
-Logger 已完成当前学习阶段的功能。下一步进入阻塞 TCP Echo Server，再逐步
-学习非阻塞 socket、epoll、连接缓冲区和 HTTP；接入服务器时再整理独立库构建。
